@@ -2,23 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]))
 
-(def *corpus-dir* "/home/wqiu/nlg/wqiu/thesis/corpus/TACoS/alignments-text")
-
-(defn load-data 
-  "load the video-descprition alignment data."
-  [input-dir]
-  (into {} (for [f (file-seq (io/file input-dir))
-        :let [myname (.getName f)
-              path (.getCanonicalPath f)]
-        :when (.endsWith path ".tsv")]
-    [(first (str/split myname #"\.")) (read-content f)])))
-
-(defn read-content 
-  "read the content of file in corpus."
-  [file]
-  (let [rdr (io/reader file)]
-    (for [line (line-seq rdr)]
-      (parse-line line))))
+(def ^:dynamic *corpus-dir* "/home/wqiu/nlg/wqiu/thesis/corpus/TACoS/alignments-text")
 
 (defn parse-line 
   "parse one line according to the corpus data format"
@@ -33,9 +17,26 @@
      :nls (filter #(not (str/blank? %)) (subvec content 6))
      }))
 
+
+(defn read-content 
+  "read the content of file in corpus."
+  [file]
+  (let [rdr (io/reader file)]
+    (for [line (line-seq rdr)]
+      (parse-line line))))
+
+(defn load-data 
+  "load the video-descprition alignment data."
+  [input-dir]
+  (into {} (for [f (file-seq (io/file input-dir))
+        :let [myname (.getName f)
+              path (.getCanonicalPath f)]
+        :when (.endsWith path ".tsv")]
+    [(first (str/split myname #"\.")) (read-content f)])))
+
 (take 2 (load-data *corpus-dir*))
 
-(with-open [wtr (io/writer "tacos.txt")]
+#_(with-open [wtr (io/writer "tacos.txt")]
   (pprint (load-data *corpus-dir* ) wtr))
 ;(concat (repeat 3 :start) '("i" "love")  :end)
 ;

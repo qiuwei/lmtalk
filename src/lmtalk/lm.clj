@@ -13,7 +13,7 @@
 (get-sent-tacos 
   (lmdata/load-data "/home/wqiu/nlg/wqiu/thesis/corpus/TACoS/alignments-text")) 
 
-(def ^:dynamic *samplecorpus* (get-sent-tacos (lmdata/load-data "/home/wqiu/nlg/wqiu/thesis/corpus/TACoS/alignments-text"))) 
+(def ^:dynamic *samplecorpus* (get-sent-tacos (lmdata/load-data "../corpus/TACoS/alignments-text"))) 
 
 (defn n-gram 
   "generate n gram from a sentence
@@ -48,6 +48,15 @@
         0)))))
 
 
+(defn- get-next-state
+  "get next state according to current state and vocab and lanuage model"
+  [lm cstat vocab]
+  (doall (pmap 
+    (fn [word] 
+      (reduce  #(if (> (second %) (second %2)) % %2)
+              (doall (pmap #(vector (concat word (first %)) (* (second %) (lm (-> % ffirst list) word))) cstat))))
+    vocab)))
+
 (defn verbalize-bin 
   "get the most probable utterance according to the start word and end word
   This is only for 2-gram language model"
@@ -67,15 +76,6 @@
                    (if (< (/ x2 (count x1)) (/ y2 (count y1))) y x)))
              (take len (for [stat (iterate #(gns % vocab) init)]
             (gns stat (-> end list list))))))))
-
-(defn- get-next-state
-  "get next state according to current state and vocab and lanuage model"
-  [lm cstat vocab]
-  (doall (pmap 
-    (fn [word] 
-      (reduce  #(if (> (second %) (second %2)) % %2)
-              (doall (pmap #(vector (concat word (first %)) (* (second %) (lm (-> % ffirst list) word))) cstat))))
-    vocab)))
 
 (defn verbalize 
   "return a fuction which is used to get the most probable utterance according to the config.
