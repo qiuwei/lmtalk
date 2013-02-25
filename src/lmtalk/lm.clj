@@ -13,8 +13,7 @@
 (get-sent-tacos 
   (lmdata/load-data "/home/wqiu/nlg/wqiu/thesis/corpus/TACoS/alignments-text")) 
 
-(def ^:dynamic *samplecorpus* (take 20 
-                                    (get-sent-tacos (lmdata/load-data "/home/wqiu/nlg/wqiu/thesis/corpus/TACoS/alignments-text")))) 
+(def ^:dynamic *samplecorpus* (get-sent-tacos (lmdata/load-data "/home/wqiu/nlg/wqiu/thesis/corpus/TACoS/alignments-text"))) 
 
 (defn n-gram 
   "generate n gram from a sentence
@@ -25,7 +24,7 @@
     (partition n 1 (concat spad sent epad))))
 
 (defn build-lm 
-  "build n-gram language model from corpus.
+  "build raw n-gram language model from corpus.
   corpus is a sequence of strings.
   Each string represents a sentence."
   [corpus n]
@@ -36,7 +35,7 @@
 
 (defn lang-model
   "get the conditional probability of current word and history.
-  language model is a map representation of ngrams.
+  raw language model is a map representation of ngrams.
   return a fucntion which accepts history and current word to calculate the
   probability. 
   TODO: implement smoothing method as a function which can be passed to it"
@@ -73,8 +72,12 @@
             (get-next-state stat (-> end list list))))))))
 
 (defn verbalize 
-  "get the most probable utterance according to the config.
-  config specifies the order of content words"
-  [config]
-  (let [conf (partition 2 1 (concat [:start] config [:end]))
-        ]))
+  "return a fuction which is used to get the most probable utterance according to the config.
+  The function accepts config which is a list specifies the order of content words.
+  fn-bin is the function deal with binary config which specifies the start word and end word"
+  [fn-bin]
+  (fn [& config]
+    (let [conf (partition 2 1 (concat [:start] config [:end]))
+          result-bin (map #(apply fn-bin %) conf)]
+       (reduce #(concat % (reverse %2)) '() (for [[[ x _]] result-bin]
+        (butlast x))))))
