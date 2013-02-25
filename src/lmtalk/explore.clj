@@ -1,7 +1,17 @@
-(def lm (lang-model (build-lm *samplecorpus* 2)))
+(def raw-model (build-lm *samplecorpus* 2))
 
-(lm '("girls") '("takes"))
+(def lm (lang-model raw-model))
 
-((verbalize-bin raw-model 10)  "takes" "orange") 
+(time (lm '("girl") '("takes")))
 
-((verbalize (verbalize-bin raw-model 10)) "person" "takes" "orange")
+(time (lm '("girl") '("takes")))
+
+(time ((verbalize-bin raw-model 10)  "takes" "orange")) 
+
+((verbalize-bin raw-model 10)  "takes" "knife") 
+
+
+(def talk (verbalize (verbalize-bin raw-model 3)))
+
+(talk "takes" "knife")
+

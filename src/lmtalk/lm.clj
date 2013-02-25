@@ -5,9 +5,9 @@
 (defn- get-sent-tacos 
   "extract sentences from tacos"
   [tacos]
-  (apply concat (for [video (vals tacos)
+  (apply concat (doall (for [video (vals tacos)
         frame video]
-    (:nls frame)))
+    (:nls frame))))
   )
 
 (get-sent-tacos 
@@ -31,7 +31,7 @@
   (let [normalize (fn [s] (.toLowerCase s))]
     (apply merge
       (for [x (range 1 (inc n))] 
-        (frequencies (apply concat (map #(n-gram (str/split (normalize %) #"\.|\s+") x) corpus)))))))
+        (frequencies (apply concat (doall (pmap #(n-gram (str/split (normalize %) #"\.|\s+") x) corpus))))))))
 
 (defn lang-model
   "get the conditional probability of current word and history.
@@ -40,12 +40,12 @@
   probability. 
   TODO: implement smoothing method as a function which can be passed to it"
   [langmodel]
-  (fn [history current]
+  (memoize (fn [history current]
     (let [count-his-current (langmodel (concat history current))
         count-his (langmodel history)]
       (if (and count-his-current count-his) 
         (/ count-his-current count-his)
-        0))))
+        0)))))
 
 
 (defn verbalize-bin 
@@ -56,20 +56,26 @@
     (let [vocab (filter #(and (= 1 (count %)) (not (keyword? (first %)))) (keys langmodel))
           lm (lang-model langmodel)
           init (repeat (count vocab) [(list start) 1])
-          get-next-state (fn 
-                           [ctat vocab]
-                            (map (fn [word]
-                               (reduce  #(if (> (second %) (second %2)) % %2) (map #(vector (concat word (first %)) (* (second %) (lm (-> % ffirst list) word))) ctat))) vocab))]
+          gns (partial get-next-state lm)]
       ;this can generate a lazy sequence of states
-      #_(iterate #(get-next-state % vocab) init)
-      #_(take len (for [stat (iterate #(get-next-state % vocab) init)]
-            (get-next-state stat (-> end list list))))
+      #_(iterate #(gns % vocab) init)
+      #_(take len (for [stat (iterate #(gns % vocab) init)]
+            (gns stat (-> end list list))))
       (reduce (fn [x y] 
                  (let [[[x1 x2]] x
                        [[y1 y2]] y]
                    (if (< (/ x2 (count x1)) (/ y2 (count y1))) y x)))
-             (take len (for [stat (iterate #(get-next-state % vocab) init)]
-            (get-next-state stat (-> end list list))))))))
+             (take len (for [stat (iterate #(gns % vocab) init)]
+            (gns stat (-> end list list))))))))
+
+(defn- get-next-state
+  "get next state according to current state and vocab and lanuage model"
+  [lm cstat vocab]
+  (doall (pmap 
+    (fn [word] 
+      (reduce  #(if (> (second %) (second %2)) % %2)
+              (doall (pmap #(vector (concat word (first %)) (* (second %) (lm (-> % ffirst list) word))) cstat))))
+    vocab)))
 
 (defn verbalize 
   "return a fuction which is used to get the most probable utterance according to the config.
@@ -78,6 +84,6 @@
   [fn-bin]
   (fn [& config]
     (let [conf (partition 2 1 (concat [:start] config [:end]))
-          result-bin (map #(apply fn-bin %) conf)]
-       (reduce #(concat % (reverse %2)) '() (for [[[ x _]] result-bin]
-        (butlast x))))))
+          result-bin (doall (pmap #(apply fn-bin %) conf))]
+       (reduce #(concat % (reverse %2)) '() doall (doall (for [[[ x _]] result-bin]
+        (butlast x)))))))
