@@ -85,5 +85,5 @@
   (fn [& config]
     (let [conf (partition 2 1 (concat [:start] config [:end]))
           result-bin (doall (pmap #(apply fn-bin %) conf))]
-       (reduce #(concat % (reverse %2)) '() doall (doall (for [[[ x _]] result-bin]
+       (reduce #(concat % (reverse %2)) '() (doall (for [[[ x _]] result-bin]
         (butlast x)))))))
